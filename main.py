@@ -5,8 +5,15 @@ import sys
 import pygame
 import random
 from pygame import *
+from ai.agent import Agent
+from pprint import pprint
 
 pygame.init()
+
+def send_space_bar_press_event():
+		pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE))
+
+agent = Agent(send_space_bar_press_event, send_space_bar_press_event)
 
 scr_size = (width,height) = (600,150)
 FPS = 60
@@ -190,6 +197,8 @@ class Cactus(pygame.sprite.Sprite):
         self.rect.left = width + self.rect.width
         self.image = self.images[random.randrange(0,3)]
         self.movement = [-1*speed,0]
+        self.leftSet = False
+        self.rewarded = False
 
     def draw(self):
         screen.blit(self.image,self.rect)
@@ -199,6 +208,11 @@ class Cactus(pygame.sprite.Sprite):
 
         if self.rect.right < 0:
             self.kill()
+
+        if self.rect.left < 0 and not self.rewarded:
+            self.rewarded = True
+            agent.reward()
+            print("rewarded")
 
 class Ptera(pygame.sprite.Sprite):
     def __init__(self,speed=5,sizex=-1,sizey=-1):
@@ -211,6 +225,8 @@ class Ptera(pygame.sprite.Sprite):
         self.movement = [-1*speed,0]
         self.index = 0
         self.counter = 0
+        self.leftSet = False
+        self.rewarded = False
 
     def draw(self):
         screen.blit(self.image,self.rect)
@@ -223,6 +239,10 @@ class Ptera(pygame.sprite.Sprite):
         self.counter = (self.counter + 1)
         if self.rect.right < 0:
             self.kill()
+
+        if self.rect.left < 0 and not self.rewarded:
+            self.rewarded = True
+            agent.reward()
 
 
 class Ground():
@@ -359,8 +379,8 @@ def gameplay():
     Ptera.containers = pteras
     Cloud.containers = clouds
 
-    retbutton_image,retbutton_rect = load_image('replay_button.png',35,31,-1)
-    gameover_image,gameover_rect = load_image('game_over.png',190,11,-1)
+    retbutton_image, retbutton_rect = load_image('replay_button.png',35,31,-1)
+    gameover_image, gameover_rect = load_image('game_over.png',190,11,-1)
 
     temp_images,temp_rect = load_sprite_sheet('numbers.png',12,1,11,int(11*6/5),-1)
     HI_image = pygame.Surface((22,int(11*6/5)))
@@ -381,6 +401,9 @@ def gameplay():
                 gameQuit = True
                 gameOver = True
             else:
+                cod = width
+                coa = height
+
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         gameQuit = True
@@ -407,6 +430,14 @@ def gameplay():
                     playerDino.isDead = True
                     if pygame.mixer.get_init() != None:
                         die_sound.play()
+                
+                if not c.leftSet and c.rect.left < 0:
+                    c.leftSet = True
+                    cod = width
+                elif not c.leftSet and c.rect.left < cod:
+                    cod = c.rect.left
+                    coa = c.rect.bottom
+
 
             for p in pteras:
                 p.movement[0] = -1*gamespeed
@@ -414,6 +445,13 @@ def gameplay():
                     playerDino.isDead = True
                     if pygame.mixer.get_init() != None:
                         die_sound.play()
+                
+                if not p.leftSet and p.rect.left < 0:
+                    p.leftSet = True
+                    cod = width
+                elif not p.leftSet and p.rect.left < cod:
+                    cod = p.rect.left
+                    coa = p.rect.bottom
 
             if len(cacti) < 2:
                 if len(cacti) == 0:
@@ -442,6 +480,8 @@ def gameplay():
             scb.update(playerDino.score)
             highsc.update(high_score)
 
+            agent.updateState(cod, coa, gamespeed, playerDino.isJumping)
+ 
             if pygame.display.get_surface() != None:
                 screen.fill(background_col)
                 new_ground.draw()
@@ -458,6 +498,7 @@ def gameplay():
             clock.tick(FPS)
 
             if playerDino.isDead:
+                agent.died( playerDino.isJumping, playerDino.movement[1] >= 0)
                 gameOver = True
                 if playerDino.score > high_score:
                     high_score = playerDino.score
