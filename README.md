@@ -1,7 +1,5 @@
 # Dino Run
 
-![](https://github.com/shivamshekhar/Chrome-T-Rex-Rush/raw/master/screenshot.png)
-
 ![](https://github.com/shivamshekhar/Chrome-T-Rex-Rush/raw/master/screenshot.gif)
 
 ### Description:
